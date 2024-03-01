@@ -16,16 +16,19 @@ competition Competition;
 
 // define your global instances of motors and other devices here
 
-
 motor left1 = motor(PORT19, ratio6_1, false);
 motor left2 = motor(PORT20, ratio6_1, false);
 motor left3 = motor(PORT10, ratio6_1, false);
 motor left4 = motor(PORT9, ratio6_1, false);
 
+motor_group leftMotors = motor_group(left1, left2, left3, left4);
+
 motor right1 = motor(PORT13, ratio6_1, false);
 motor right2 = motor(PORT11, ratio6_1, false);
 motor right3 = motor(PORT1, ratio6_1, false);
 motor right4 = motor(PORT2, ratio6_1, false);
+
+motor_group rightMotors = motor_group(right1, right2, right3, right4);
 
 controller Controller1 = controller(primary);
 
@@ -41,7 +44,8 @@ motor arm = motor(PORT16, ratio18_1, false);
 /*  not every time that the robot is disabled.                               */
 /*---------------------------------------------------------------------------*/
 
-void pre_auton(void) {
+void pre_auton(void)
+{
 
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
@@ -57,7 +61,8 @@ void pre_auton(void) {
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
-void autonomous(void) {
+void autonomous(void)
+{
   // ..........................................................................
   // Insert autonomous user code here.
   // ..........................................................................
@@ -74,9 +79,11 @@ void autonomous(void) {
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
-void usercontrol(void) {
+void usercontrol(void)
+{
   // User control code here, inside the loop
-  while (1) {
+  while (1)
+  {
     // This is the main execution loop for the user control program.
     // Each time through the loop your program should update motor + servo
     // values based on feedback from the joysticks.
@@ -98,6 +105,17 @@ void usercontrol(void) {
       arm.stop(brakeType::brake);
     }
 
+    float moveSpeed = 1;
+    float spinSpeed = .7;
+
+    leftMotors.spin(forward,
+                    (-Controller1.Axis3.position() * moveSpeed - Controller1.Axis1.position() * spinSpeed),
+                    pct);
+
+    rightMotors.spin(forward,
+                     (Controller1.Axis3.position() * moveSpeed - Controller1.Axis1.position() * spinSpeed),
+                     pct);
+
     wait(20, msec); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
   }
@@ -106,7 +124,8 @@ void usercontrol(void) {
 //
 // Main will set up the competition functions and callbacks.
 //
-int main() {
+int main()
+{
   // Set up callbacks for autonomous and driver control periods.
   Competition.autonomous(autonomous);
   Competition.drivercontrol(usercontrol);
@@ -115,7 +134,8 @@ int main() {
   pre_auton();
 
   // Prevent main from exiting with an infinite loop.
-  while (true) {
+  while (true)
+  {
     wait(100, msec);
   }
 }

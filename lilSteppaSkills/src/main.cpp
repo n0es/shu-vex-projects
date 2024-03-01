@@ -2,7 +2,7 @@
 /*                                                                            */
 /*    Module:       main.cpp                                                  */
 /*    Author:       whiteeth                                                  */
-/*    Created:      2/22/2024, 8:25:04 PM                                     */
+/*    Created:      2/29/2024, 8:43:05 PM                                     */
 /*    Description:  V5 project                                                */
 /*                                                                            */
 /*----------------------------------------------------------------------------*/
@@ -41,7 +41,7 @@ motor intake = motor(PORT10, ratio18_1, false);
 triport ThreeWirePort(PORT22);
 pneumatics wings = pneumatics(ThreeWirePort.H);
 
-inertial imu = inertial(PORT15);
+inertial imu = inertial(PORT11);
 
 // define your global instances of motors and other devices here
 
@@ -54,15 +54,6 @@ inertial imu = inertial(PORT15);
 /*  function is only called once after the V5 has been powered on and        */
 /*  not every time that the robot is disabled.                               */
 /*---------------------------------------------------------------------------*/
-
-void pre_auton(void)
-{
-  imu.calibrate();
-  while (imu.isCalibrating())
-  {
-    vex::wait(15, msec);
-  }
-}
 
 void move(float inches, vex::directionType direction, float velocity = NULL)
 {
@@ -98,7 +89,7 @@ void rotate(float degrees, rotationDirection direction, float velocity = NULL)
   leftMotors.resetPosition();
   rightMotors.resetPosition();
 
-  float revs = ((((10.5 * 3.14) / 360) * degrees) / 6.28) * (1 - (2 * int(direction)));
+  float revs = ((((10.35 * 3.14) / 360) * degrees) / 6.28) * (1 - (2 * int(direction)));
   if (velocity)
   {
     leftMotors.spinFor(revs, rev, velocity, vex::velocityUnits::pct, false);
@@ -110,8 +101,15 @@ void rotate(float degrees, rotationDirection direction, float velocity = NULL)
     rightMotors.spinFor(revs, rev, true);
   }
 
-  leftMotors.stop(hold);
-  rightMotors.stop(hold);
+  leftMotors.stop(brake);
+  rightMotors.stop(brake);
+}
+
+void pre_auton(void)
+{
+
+  // All activities that occur before the competition starts
+  // Example: clearing encoders, setting servo positions, ...
 }
 
 /*---------------------------------------------------------------------------*/
@@ -123,28 +121,35 @@ void rotate(float degrees, rotationDirection direction, float velocity = NULL)
 /*                                                                           */
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
+
 void autonomous(void)
 {
   imu.calibrate();
+  float i = 0;
   while (imu.isCalibrating())
   {
-    vex::wait(15, msec);
+    i = i + 50;
+    vex::wait(50, msec);
+    printf("calibrating... (%.1f)", i);
   }
-  move(1.75 * 24, fwd, 30);
-  printf("done moving\n");
   vex::wait(500, msec);
-  rotate(45, CW, 20);
-  printf("done rotating\n");
-  vex::wait(500, msec);
-  intake.spin(forward);
-  move(10, fwd, 30);
-  wings.open();
-  vex::wait(500, msec);
-  rotate(45, CW, 30);
-  vex::wait(500, msec);
-  intake.spin(reverse);
-  vex::wait(500, msec);
-  move(2 * 24, fwd, 100);
+
+  imu.resetRotation();
+  int rots = 22;
+  while (rots > 0)
+  {
+    rotate(360, CW, 30);
+    rots--;
+    vex::wait(250, msec);
+    printf("%.1f", imu.rotation());
+    printf("\n");
+    if (abs(360 - imu.rotation()) > 3)
+    {
+      rotate(360 - imu.rotation(), CW, 10);
+      vex::wait(250, msec);
+    }
+    imu.setRotation(imu.rotation() - 360, degrees);
+  }
 }
 
 /*---------------------------------------------------------------------------*/
@@ -159,89 +164,37 @@ void autonomous(void)
 
 void usercontrol(void)
 {
-  rightMotors.stop(hold);
-  leftMotors.stop(hold);
-
   float moveSpeed = 1;
   float spinSpeed = .65;
   while (1)
   {
-    // This is the main execution loop for the user control program.
-    // Each time through the loop your program should update motor + servo
-    // values based on feedback from the joysticks.
-
-    // ........................................................................
-    // Insert user code here. This is where you use the joystick values to
-    // update your motors, etc.
-    // ........................................................................
-
-    if (Controller1.ButtonY.pressing())
-    {
-      wings.open();
-    }
-    if (Controller1.ButtonRight.pressing())
-    {
-      wings.close();
-    }
-
-    if (Controller1.ButtonR2.pressing())
-    {
-      intake.spin(reverse, 100, percent);
-    }
-    else if (Controller1.ButtonR1.pressing())
-    {
-      intake.spin(forward, 100, percent);
-    }
-    else
-    {
-      intake.stop(brake);
-    }
-
-    if (Controller1.ButtonA.pressing())
-    {
-      arm.spin(forward, 50, percent);
-    }
-    else if (Controller1.ButtonB.pressing())
-    {
-      arm.spin(reverse, 50, percent);
-    }
-    else
-    {
-      arm.stop(brakeType::hold);
-    }
-
-    Controller1.Screen.clearScreen();
-    Controller1.Screen.setCursor(0, 0);
-    Controller1.Screen.print(imu.angle());
-
-    // if (Controller1.ButtonDown.pressing())
-    // {
-    //   rightMotors.setVelocity(35, percent);
-    //   leftMotors.stop(coast);
-    //   rightMotors.spinTo(-300,rotationUnits::raw,true);
-    //   vex::wait(.5, sec);
-    //   rightMotors.spinTo(0,rotationUnits::raw,true);
-    // }
-
-    leftMotors.spin(forward,
-                    (-Controller1.Axis3.position() * moveSpeed - Controller1.Axis1.position() * spinSpeed),
-                    pct);
-
-    rightMotors.spin(forward,
-                     (Controller1.Axis3.position() * moveSpeed - Controller1.Axis1.position() * spinSpeed),
-                     pct);
 
     if (Controller1.ButtonL1.pressing())
     {
-      blocker.spinTo(500, degrees);
+      if (Controller1.ButtonDown.pressing())
+      {
+        rightMotors.spin(reverse, 40, percent);
+        leftMotors.spin(reverse, 40, percent);
+      }
+      else
+      {
+        rightMotors.stop(brake);
+        leftMotors.stop(brake);
+      }
     }
-    else if (Controller1.ButtonL2.pressing())
+    else
     {
-      blocker.spinTo(0, degrees);
+      leftMotors.spin(forward,
+                      (-Controller1.Axis3.position() * moveSpeed - Controller1.Axis1.position() * spinSpeed),
+                      pct);
+
+      rightMotors.spin(forward,
+                       (Controller1.Axis3.position() * moveSpeed - Controller1.Axis1.position() * spinSpeed),
+                       pct);
     }
 
-    vex::wait(20, msec); // Sleep the task for a short amount of time to
-                         // prevent wasted resources.
+    wait(20, msec); // Sleep the task for a short amount of time to
+                    // prevent wasted resources.
   }
 }
 
@@ -260,6 +213,6 @@ int main()
   // Prevent main from exiting with an infinite loop.
   while (true)
   {
-    vex::wait(100, msec);
+    wait(100, msec);
   }
 }
