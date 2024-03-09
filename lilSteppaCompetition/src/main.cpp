@@ -159,11 +159,11 @@ void autonomous(void)
 
 void usercontrol(void)
 {
-  rightMotors.stop(hold);
-  leftMotors.stop(hold);
+  rightMotors.stop(coast);
+  leftMotors.stop(coast);
 
   float moveSpeed = 1;
-  float spinSpeed = .65;
+  float spinSpeed = .6;
   while (1)
   {
     // This is the main execution loop for the user control program.
@@ -233,11 +233,11 @@ void usercontrol(void)
 
     if (Controller1.ButtonL1.pressing())
     {
-      blocker.spinTo(500, degrees);
+      blocker.spinTo(500, degrees, false);
     }
     else if (Controller1.ButtonL2.pressing())
     {
-      blocker.spinTo(0, degrees);
+      blocker.spinTo(0, degrees, false);
     }
 
     vex::wait(20, msec); // Sleep the task for a short amount of time to
