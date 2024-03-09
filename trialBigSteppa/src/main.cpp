@@ -151,6 +151,17 @@ void autonomous(void)
     rotate(25, CW, 30);
     vex::wait(1, sec);
   }
+
+  arm.spinTo(0,degrees,true);
+  move(1,forward,20);
+  rotate(85,CW,30);
+  move(18,forward,20);
+  rotate(20,CCW,30);
+  move(3,forward,20);
+  rotate(26,CCW,30);
+  move(2.5,forward,20);
+  rotate(4,CCW,30);
+
 }
 
 
