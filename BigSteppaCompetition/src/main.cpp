@@ -21,14 +21,25 @@ motor left2 = motor(PORT20, ratio6_1, false);
 motor left3 = motor(PORT10, ratio6_1, false);
 motor left4 = motor(PORT9, ratio6_1, false);
 
+motor_group leftMotors = motor_group(left1, left2, left3, left4);
+
 motor right1 = motor(PORT13, ratio6_1, false);
 motor right2 = motor(PORT11, ratio6_1, false);
 motor right3 = motor(PORT1, ratio6_1, false);
 motor right4 = motor(PORT2, ratio6_1, false);
 
-controller Controller1 = controller(primary);
+motor_group rightMotors = motor_group(right1, right2, right3, right4);
 
 motor arm = motor(PORT16, ratio18_1, false);
+
+motor liftLeft = motor(PORT12, ratio18_1, false);
+motor liftRight = motor(PORT14, ratio18_1, true);
+
+motor_group lift = motor_group(liftLeft, liftRight);
+
+controller Controller1 = controller(primary);
+
+inertial imu = inertial(PORT17);
 
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
@@ -40,29 +51,108 @@ motor arm = motor(PORT16, ratio18_1, false);
 /*  not every time that the robot is disabled.                               */
 /*---------------------------------------------------------------------------*/
 
-void pre_auton(void)
+void move(float inches, vex::directionType direction, float velocity = NULL)
 {
+  leftMotors.resetPosition();
+  rightMotors.resetPosition();
+  double revs = (inches / 6.28) * (1 - (2 * int(direction)));
+  // (1 - (2 * int(direction))) is 1 when direction==FWD and -1 when direction==REV
+  if (velocity)
+  {
+    leftMotors.spinFor(-revs, rev, velocity, vex::velocityUnits::pct, false);
+    rightMotors.spinFor(revs, rev, velocity, vex::velocityUnits::pct, true);
+  }
+  else
+  {
+    leftMotors.spinFor(-revs, rev, false);
+    rightMotors.spinFor(revs, rev, true);
+  }
 
-  // All activities that occur before the competition starts
-  // Example: clearing encoders, setting servo positions, ...
+  leftMotors.stop(hold);
+  rightMotors.stop(hold);
 }
 
-/*---------------------------------------------------------------------------*/
-/*                                                                           */
-/*                              Autonomous Task                              */
-/*                                                                           */
-/*  This task is used to control your robot during the autonomous phase of   */
-/*  a VEX Competition.                                                       */
-/*                                                                           */
-/*  You must modify the code to add your own robot specific commands here.   */
-/*---------------------------------------------------------------------------*/
+enum rotationDirection
+{
+  CCW = 0,
+  CW,
+  CounterClockwise = 0,
+  Clockwise
+};
+
+void rotate(float degrees, rotationDirection direction, float velocity = NULL)
+{
+  leftMotors.resetPosition();
+  rightMotors.resetPosition();
+
+  float raws = (7.5 * degrees) * (1 - (2 * int(direction)));
+  if (velocity)
+  {
+    leftMotors.spinFor(raws, rotationUnits::raw, velocity, vex::velocityUnits::pct, false);
+    rightMotors.spinFor(raws, rotationUnits::raw, velocity, vex::velocityUnits::pct, true);
+  }
+  else
+  {
+    leftMotors.spinFor(raws, rotationUnits::raw, false);
+    rightMotors.spinFor(raws, rotationUnits::raw, true);
+  }
+
+  leftMotors.stop(hold);
+  rightMotors.stop(hold);
+}
+
+void ReCalibrateGyro()
+{
+  imu.calibrate();
+  while( imu.isCalibrating() )
+  { wait(10,msec); }
+}
+
+void pre_auton(void)
+{
+  // PRE AUTON SUCKS!!!!
+  ReCalibrateGyro();
+}
+
+
+// used for testing motor revolutions for one rotation
+
+// void autonomous(void)
+// {
+//   ReCalibrateGyro();
+//   leftMotors.spin(forward, 10, percent);
+//   rightMotors.spin(forward, 10, percent);
+//   while (abs(imu.rotation(rotationUnits::deg)) < 360)
+//   {
+//     vex::wait(50, msec);
+//     printf("%f \n", imu.rotation(deg));
+//   }
+//   leftMotors.stop(hold);
+//   rightMotors.stop(hold);
+//   printf("360: %f \n", left1.position(rotationUnits::raw));
+//   float rpd = left1.position(rotationUnits::raw) / 360;
+//   printf("rpd: %f \n", rpd);
+// }
 
 void autonomous(void)
 {
-  // ..........................................................................
-  // Insert autonomous user code here.
-  // ..........................................................................
+  move(21, forward, 20);
+  rotate(45, CCW, 20);
+  move(15, reverse, 20);
+
+  rotate(10, CW, 30);
+  arm.spinTo(340, degrees, true);
+
+  int repeat = 22;
+  while (repeat > 0)
+  {
+    repeat--;
+    rotate(27, CCW, 30);
+    rotate(25, CW, 30);
+    vex::wait(1, sec);
+  }
 }
+
 
 /*---------------------------------------------------------------------------*/
 /*                                                                           */
@@ -89,35 +179,29 @@ void usercontrol(void)
     }
     else
     {
-      arm.stop(brakeType::brake);
+      arm.stop(brakeType::hold);
     }
 
-    
-    left1.spin(directionType::fwd,
-               (-Controller1.Axis3.position() - Controller1.Axis1.position()),
-               percentUnits::pct);
-    left2.spin(directionType::fwd,
-               (-Controller1.Axis3.position() - Controller1.Axis1.position()),
-               percentUnits::pct);
-    left3.spin(directionType::fwd,
-               (-Controller1.Axis3.position() - Controller1.Axis1.position()),
-               percentUnits::pct);
-    left4.spin(directionType::fwd,
-               (-Controller1.Axis3.position() - Controller1.Axis1.position()),
-               percentUnits::pct);
+    if (Controller1.ButtonL1.pressing())
+    {
+      lift.spin(directionType::fwd, 100.0, percentUnits::pct);
+    }
+    else if (Controller1.ButtonL2.pressing())
+    {
+      lift.spin(directionType::rev, 100.0, percentUnits::pct);
+    }
+    else
+    {
+      lift.stop(brakeType::hold);
+    }
 
-    right4.spin(directionType::fwd,
-                (Controller1.Axis3.position() - Controller1.Axis1.position()),
-                percentUnits::pct);
-    right3.spin(directionType::fwd,
-                (Controller1.Axis3.position() - Controller1.Axis1.position()),
-                percentUnits::pct);
-    right2.spin(directionType::fwd,
-                (Controller1.Axis3.position() - Controller1.Axis1.position()),
-                percentUnits::pct);
-    right1.spin(directionType::fwd,
-                (Controller1.Axis3.position() - Controller1.Axis1.position()),
-                percentUnits::pct);
+    leftMotors.spin(forward,
+                    (-Controller1.Axis3.position() - Controller1.Axis1.position()),
+                    percent);
+
+    rightMotors.spin(forward,
+                     (Controller1.Axis3.position() - Controller1.Axis1.position()),
+                     percent);
 
     wait(20, msec); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
