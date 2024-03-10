@@ -41,7 +41,7 @@ motor intake = motor(PORT10, ratio18_1, false);
 triport ThreeWirePort(PORT22);
 pneumatics wings = pneumatics(ThreeWirePort.H);
 
-inertial imu = inertial(PORT11);
+inertial imu = inertial(PORT15);
 
 // define your global instances of motors and other devices here
 
@@ -55,6 +55,24 @@ inertial imu = inertial(PORT11);
 /*  not every time that the robot is disabled.                               */
 /*---------------------------------------------------------------------------*/
 
+void pre_auton(void)
+{
+
+  // All activities that occur before the competition starts
+  // Example: clearing encoders, setting servo positions, ...
+}
+
+/*---------------------------------------------------------------------------*/
+/*                                                                           */
+/*                              Autonomous Task                              */
+/*                                                                           */
+/*  This task is used to control your robot during the autonomous phase of   */
+/*  a VEX Competition.                                                       */
+/*                                                                           */
+/*  You must modify the code to add your own robot specific commands here.   */
+/*---------------------------------------------------------------------------*/
+
+// used for testing motor revolutions for one rotation
 void move(float inches, vex::directionType direction, float velocity = NULL)
 {
   leftMotors.resetPosition();
@@ -89,67 +107,74 @@ void rotate(float degrees, rotationDirection direction, float velocity = NULL)
   leftMotors.resetPosition();
   rightMotors.resetPosition();
 
-  float revs = ((((10.35 * 3.14) / 360) * degrees) / 6.28) * (1 - (2 * int(direction)));
+  float raws = (4.33 * degrees) * (1 - (2 * int(direction)));
   if (velocity)
   {
-    leftMotors.spinFor(revs, rev, velocity, vex::velocityUnits::pct, false);
-    rightMotors.spinFor(revs, rev, velocity, vex::velocityUnits::pct, true);
+    leftMotors.spinFor(raws, rotationUnits::raw, velocity, vex::velocityUnits::pct, false);
+    rightMotors.spinFor(raws, rotationUnits::raw, velocity, vex::velocityUnits::pct, true);
   }
   else
   {
-    leftMotors.spinFor(revs, rev, false);
-    rightMotors.spinFor(revs, rev, true);
+    leftMotors.spinFor(raws, rotationUnits::raw, false);
+    rightMotors.spinFor(raws, rotationUnits::raw, true);
   }
 
-  leftMotors.stop(brake);
-  rightMotors.stop(brake);
+  leftMotors.stop(hold);
+  rightMotors.stop(hold);
 }
 
-void pre_auton(void)
+void ReCalibrateGyro()
 {
-
-  // All activities that occur before the competition starts
-  // Example: clearing encoders, setting servo positions, ...
+  imu.calibrate();
+  while (imu.isCalibrating())
+  {
+    wait(10, msec);
+  }
 }
 
-/*---------------------------------------------------------------------------*/
-/*                                                                           */
-/*                              Autonomous Task                              */
-/*                                                                           */
-/*  This task is used to control your robot during the autonomous phase of   */
-/*  a VEX Competition.                                                       */
-/*                                                                           */
-/*  You must modify the code to add your own robot specific commands here.   */
-/*---------------------------------------------------------------------------*/
+// void autonomous(void)
+// {
+//   ReCalibrateGyro();
+//   leftMotors.spin(forward, 5, percent);
+//   rightMotors.spin(forward, 5, percent);
+//   while (abs(imu.rotation(rotationUnits::deg)) < 360)
+//   {
+//     vex::wait(50, msec);
+//     printf("%f \n", imu.rotation(deg));
+//   }
+//   leftMotors.stop(hold);
+//   rightMotors.stop(hold);
+//   printf("360: %f \n", topLeftBack.position(rotationUnits::raw));
+//   float rpd = topLeftBack.position(rotationUnits::raw) / 360;
+//   printf("rpd: %f \n", rpd);
+// }
 
 void autonomous(void)
 {
-  imu.calibrate();
-  float i = 0;
-  while (imu.isCalibrating())
-  {
-    i = i + 50;
-    vex::wait(50, msec);
-    printf("calibrating... (%.1f)", i);
-  }
-  vex::wait(500, msec);
+  ReCalibrateGyro();
+  blocker.spinTo(400, deg, true);
+  arm.spinTo(180, deg, true);
+  blocker.spinTo(0, deg, true);
 
-  imu.resetRotation();
-  int rots = 22;
-  while (rots > 0)
+  int repeat = 22;
+  while (repeat > 0)
   {
+    repeat--;
     rotate(360, CW, 30);
-    rots--;
-    vex::wait(250, msec);
-    printf("%.1f", imu.rotation());
-    printf("\n");
-    if (abs(360 - imu.rotation()) > 3)
-    {
-      rotate(360 - imu.rotation(), CW, 10);
-      vex::wait(250, msec);
-    }
-    imu.setRotation(imu.rotation() - 360, degrees);
   }
+
+  blocker.spinTo(400, deg, true);
+  arm.spinTo(0, deg, true);
+  blocker.spinTo(0, deg, true);
+
+  rotate(225 - imu.heading(), CW, 30);
+  move(12, reverse, 30);
+  rotate(45, CW, 30);
+  move(80, reverse, 30);
+  rotate(45, CW, 30);
+  move(34, reverse, 30);
+  rotate(45, CW, 30);
+  move(24, reverse, 100);
 }
 
 /*---------------------------------------------------------------------------*/
