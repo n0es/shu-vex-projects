@@ -199,11 +199,11 @@ void usercontrol(void)
 
     if (Controller1.ButtonA.pressing())
     {
-      arm.spin(forward, 50, percent);
+      arm.spin(forward, 30, percent);
     }
     else if (Controller1.ButtonB.pressing())
     {
-      arm.spin(reverse, 50, percent);
+      arm.spin(reverse, 30, percent);
     }
     else
     {
